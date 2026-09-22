@@ -1,0 +1,60 @@
+[NOTA #1] Incidente resolvido apos restart do search-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #2] Time notou aumento de latencia no search-api por volta das 12:18, investigando possivel causa relacionada a deploy recente.
+[NOTA #3] Pico de erros no payment-gateway coincide com job de batch as 22:09, provavel contencao de recursos.
+[NOTA #4] Pico de erros no notification-worker coincide com job de batch as 22:32, provavel contencao de recursos.
+[NOTA #5] Time notou aumento de latencia no payment-gateway por volta das 15:50, investigando possivel causa relacionada a deploy recente.
+[NOTA #6] Time notou aumento de latencia no auth-service por volta das 21:35, investigando possivel causa relacionada a deploy recente.
+[NOTA #7] Incidente resolvido apos restart do payment-gateway. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #8] Incidente resolvido apos restart do search-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #9] Cliente reportou erro ao finalizar compra no payment-gateway. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #10] Time notou aumento de latencia no checkout-api por volta das 13:45, investigando possivel causa relacionada a deploy recente.
+[NOTA #11] Time notou aumento de latencia no payment-gateway por volta das 10:57, investigando possivel causa relacionada a deploy recente.
+[NOTA #12] Incidente resolvido apos restart do recommendation-engine. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #13] Alerta de search-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #14] Time notou aumento de latencia no search-api por volta das 04:59, investigando possivel causa relacionada a deploy recente.
+[NOTA #15] Pico de erros no search-api coincide com job de batch as 23:31, provavel contencao de recursos.
+[NOTA #16] Time notou aumento de latencia no recommendation-engine por volta das 22:21, investigando possivel causa relacionada a deploy recente.
+[NOTA #17] Cliente reportou erro ao finalizar compra no notification-worker. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #18] Alerta de inventory-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #19] Incidente resolvido apos restart do search-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #20] Pico de erros no recommendation-engine coincide com job de batch as 13:51, provavel contencao de recursos.
+[NOTA #21] Cliente reportou erro ao finalizar compra no payment-gateway. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #22] Alerta de checkout-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #23] Alerta de search-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #24] Cliente reportou erro ao finalizar compra no search-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #25] Alerta de payment-gateway disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #26] Pico de erros no search-api coincide com job de batch as 00:19, provavel contencao de recursos.
+[NOTA #27] Time notou aumento de latencia no notification-worker por volta das 17:12, investigando possivel causa relacionada a deploy recente.
+[NOTA #28] Incidente resolvido apos restart do inventory-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #29] Alerta de recommendation-engine disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #30] Cliente reportou erro ao finalizar compra no notification-worker. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #31] Pico de erros no payment-gateway coincide com job de batch as 03:25, provavel contencao de recursos.
+[NOTA #32] Time notou aumento de latencia no notification-worker por volta das 14:20, investigando possivel causa relacionada a deploy recente.
+[NOTA #33] Cliente reportou erro ao finalizar compra no recommendation-engine. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #34] Cliente reportou erro ao finalizar compra no inventory-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #35] Cliente reportou erro ao finalizar compra no notification-worker. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #36] Time notou aumento de latencia no notification-worker por volta das 10:19, investigando possivel causa relacionada a deploy recente.
+[NOTA #37] Pico de erros no search-api coincide com job de batch as 03:17, provavel contencao de recursos.
+[NOTA #38] Pico de erros no inventory-api coincide com job de batch as 20:53, provavel contencao de recursos.
+[NOTA #39] Cliente reportou erro ao finalizar compra no inventory-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #40] Incidente resolvido apos restart do checkout-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #41] Cliente reportou erro ao finalizar compra no recommendation-engine. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #42] Cliente reportou erro ao finalizar compra no search-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #43] Cliente reportou erro ao finalizar compra no recommendation-engine. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #44] Incidente resolvido apos restart do auth-service. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #45] Cliente reportou erro ao finalizar compra no checkout-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #46] Alerta de inventory-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #47] Alerta de recommendation-engine disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #48] Time notou aumento de latencia no notification-worker por volta das 23:18, investigando possivel causa relacionada a deploy recente.
+[NOTA #49] Alerta de search-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #50] Pico de erros no inventory-api coincide com job de batch as 03:08, provavel contencao de recursos.
+[NOTA #51] Alerta de recommendation-engine disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #52] Time notou aumento de latencia no recommendation-engine por volta das 22:19, investigando possivel causa relacionada a deploy recente.
+[NOTA #53] Incidente resolvido apos restart do search-api. Causa raiz ainda nao identificada, abrir post-mortem.
+[NOTA #54] Cliente reportou erro ao finalizar compra no inventory-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #55] Alerta de payment-gateway disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #56] Cliente reportou erro ao finalizar compra no search-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #57] Alerta de search-api disparado, mas nao encontramos impacto real ao usuario - possivel falso positivo, ajustar threshold.
+[NOTA #58] Cliente reportou erro ao finalizar compra no inventory-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #59] Cliente reportou erro ao finalizar compra no checkout-api. Reproduzido em ambiente de staging, aguardando fix do time de dev.
+[NOTA #60] Incidente resolvido apos restart do payment-gateway. Causa raiz ainda nao identificada, abrir post-mortem.

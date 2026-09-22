@@ -1,0 +1,7 @@
+{
+  "service": "payment-gateway",
+  "level": "ERROR",
+  "response_time_ms": 4200,
+  "message": "timeout connecting to payment-gateway",
+  "trace_id": "demo-critical-001"
+}

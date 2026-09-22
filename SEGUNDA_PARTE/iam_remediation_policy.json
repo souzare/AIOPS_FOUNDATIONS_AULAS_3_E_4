@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WriteIncidents",
+      "Effect": "Allow",
+      "Action": "dynamodb:PutItem",
+      "Resource": "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/aiops_lab_incidents"
+    },
+    {
+      "Sid": "PutMetrics",
+      "Effect": "Allow",
+      "Action": "cloudwatch:PutMetricData",
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloseLoopOptional",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::aiops-etl-lab-SEUNOME/raw/remediations/*"
+    }
+  ]
+}

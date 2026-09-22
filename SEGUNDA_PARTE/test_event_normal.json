@@ -1,0 +1,7 @@
+{
+  "service": "search-api",
+  "level": "INFO",
+  "response_time_ms": 85,
+  "message": "request processed successfully",
+  "trace_id": "demo-normal-001"
+}
