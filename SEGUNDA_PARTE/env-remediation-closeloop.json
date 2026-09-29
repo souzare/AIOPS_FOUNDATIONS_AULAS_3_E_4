@@ -1,0 +1,6 @@
+{
+  "Variables": {
+    "DYNAMODB_TABLE": "aiops_lab_incidents",
+    "CLOSE_LOOP_BUCKET": "aiops-etl-lab-SEUNOME"
+  }
+}

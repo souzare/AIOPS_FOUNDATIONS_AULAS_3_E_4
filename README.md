@@ -42,8 +42,21 @@ aiops-foundation-labs/
     ├── test_event_normal.json          evento de teste que NÃO deve disparar nada além da métrica
     ├── lambda_trust_policy.json        trust policy padrão (permite Lambda assumir a role)
     ├── iam_scoring_policy.json         permissões da role da Lambda de scoring
-    └── iam_remediation_policy.json     permissões da role da Lambda de remediação
+    ├── iam_remediation_policy.json     permissões da role da Lambda de remediação
+    ├── env-scoring.json                variáveis de ambiente da Lambda de scoring
+    ├── env-remediation.json            variáveis de ambiente da Lambda de remediação
+    └── env-remediation-closeloop.json  variáveis de ambiente (com o bônus de fechar o ciclo no S3)
 ```
+
+> ⚠️ **Sobre comandos multi-linha (`\`):** se o seu terminal quebrar ou
+> misturar um comando ao colar (sintomas: erro de parsing estranho, ou um
+> comando inteiro aparecendo "dentro" de outro), copie o comando inteiro em
+> **uma única linha** em vez de linha por linha com `\` no final — alguns
+> terminais (principalmente PowerShell/CMD no Windows, ou certos
+> emuladores) não lidam bem com continuação de linha em bash. Os comandos
+> `--environment` deste guia já foram desenhados para usar um arquivo
+> `file://` em vez da sintaxe inline `Variables={...}` exatamente para
+> evitar esse tipo de problema.
 
 **Convenção de diretório:** toda vez que este guia mostra um comando com um
 nome de arquivo simples (ex: `generate_data.py`, `scoring_lambda.py`), ele
@@ -511,19 +524,21 @@ disso."*
 
 ## Etapa 14 — Publicar a Lambda de scoring
 
-🖥️ **Comando:**
+🖥️ **Ação:** edite `env-scoring.json` e troque `ACCOUNT_ID` pelo ID real da
+sua conta (`aws sts get-caller-identity --query Account --output text`).
+
+🖥️ **Comando (rode como uma única linha, sem quebra `\`):**
 ```bash
 zip scoring_lambda.zip scoring_lambda.py
-
-aws lambda create-function \
-  --function-name aiops-lab-scoring \
-  --runtime python3.12 \
-  --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-scoring-role \
-  --handler scoring_lambda.lambda_handler \
-  --zip-file fileb://scoring_lambda.zip \
-  --timeout 10 \
-  --environment "Variables={SNS_TOPIC_ARN=arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts}"
 ```
+```bash
+aws lambda create-function --function-name aiops-lab-scoring --runtime python3.12 --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-scoring-role --handler scoring_lambda.lambda_handler --zip-file fileb://scoring_lambda.zip --timeout 10 --environment file://env-scoring.json
+```
+
+> Usamos um arquivo `file://env-scoring.json` em vez da sintaxe inline
+> `Variables={...}` porque o `{`, `}` e `:` dentro dela costumam quebrar em
+> alguns terminais (principalmente ao colar um comando multi-linha) —
+> o arquivo é mais robusto e funciona igual em qualquer shell.
 
 🎤 **Fala:** *"Essa função replica a mesma fórmula que usamos no Glue Job do
 Módulo 3 — que é exatamente a lógica que o modelo do Módulo 4 aprendeu a
@@ -607,18 +622,16 @@ aws iam put-role-policy \
 ## Etapa 18 — Publicar a Lambda de remediação
 
 🖥️ **Comando:**
+🖥️ **Comando (rode como uma única linha, sem quebra `\`):**
 ```bash
 zip remediation_lambda.zip remediation_lambda.py
-
-aws lambda create-function \
-  --function-name aiops-lab-remediation \
-  --runtime python3.12 \
-  --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-remediation-role \
-  --handler remediation_lambda.lambda_handler \
-  --zip-file fileb://remediation_lambda.zip \
-  --timeout 10 \
-  --environment "Variables={DYNAMODB_TABLE=aiops_lab_incidents}"
 ```
+```bash
+aws lambda create-function --function-name aiops-lab-remediation --runtime python3.12 --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-remediation-role --handler remediation_lambda.lambda_handler --zip-file fileb://remediation_lambda.zip --timeout 10 --environment file://env-remediation.json
+```
+
+> `env-remediation.json` já vem pronto (não precisa editar `ACCOUNT_ID` —
+> ele só referencia a tabela DynamoDB, que não tem ID de conta no nome).
 
 🎤 **Fala:** *"Essa função tem um 'playbook' simples: um mapa de qual serviço
 recebe qual ação de correção. Numa empresa real, isso viria de uma base de
@@ -675,11 +688,12 @@ Colaboração → Remediação do Módulo 1, rodando de verdade."*
 
 Se quiser ir além e mostrar o ciclo se retroalimentando:
 
-🖥️ **Comando (redeploy da Lambda de remediação com a variável extra):**
+🖥️ **Ação:** edite `env-remediation-closeloop.json` e troque `SEUNOME` pelo
+nome real do seu bucket (o mesmo da PRIMEIRA_PARTE, ex: `aiops-etl-lab-renan`).
+
+🖥️ **Comando (redeploy da Lambda de remediação com a variável extra, uma única linha):**
 ```bash
-aws lambda update-function-configuration \
-  --function-name aiops-lab-remediation \
-  --environment "Variables={DYNAMODB_TABLE=aiops_lab_incidents,CLOSE_LOOP_BUCKET=aiops-etl-lab-SEUNOME}"
+aws lambda update-function-configuration --function-name aiops-lab-remediation --environment file://env-remediation-closeloop.json
 ```
 
 Depois de rodar a Etapa 20 de novo, confira:
@@ -763,6 +777,8 @@ sem criar duplicidade).
 | Item não aparece no DynamoDB | Confira se `DYNAMODB_TABLE` está correta na variável de ambiente da Lambda de remediação, e se a tabela existe (Etapa 12) |
 | Métricas não aparecem no CloudWatch | Métricas customizadas podem levar 1-2 min para aparecer no console na primeira vez |
 | Erro ao editar os `.json` de política | Lembre de trocar `ACCOUNT_ID` (e `SEUNOME` no bônus da Etapa 21) antes de rodar os comandos que os usam |
+| `InvalidParameter: Invalid namespace: ACCOUNT_ID` (SNS) | Você esqueceu de trocar o `ACCOUNT_ID` literal no comando por um número real — rode `aws sts get-caller-identity --query Account --output text` e substitua |
+| `Error parsing parameter '--environment'` ou o comando inteiro aparece "dentro" de outro | O terminal quebrou a continuação de linha `\` — copie o comando como uma única linha, ou use os arquivos `env-*.json` com `--environment file://...` (já é o padrão deste guia) |
 
 ---
 

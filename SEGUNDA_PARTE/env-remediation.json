@@ -1,0 +1,5 @@
+{
+  "Variables": {
+    "DYNAMODB_TABLE": "aiops_lab_incidents"
+  }
+}

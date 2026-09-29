@@ -1,0 +1,5 @@
+{
+  "Variables": {
+    "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts"
+  }
+}
