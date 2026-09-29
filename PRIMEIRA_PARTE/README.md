@@ -30,7 +30,7 @@ supervised_learning_demo.ipynb → notebook de aprendizado supervisionado (Módu
 requirements.txt               → dependências do notebook (se for rodar localmente)
 ```
 
-Substitua `SEUNOME` por um identificador seu em todos os comandos abaixo
+Substitua `renan\` por um identificador seu em todos os comandos abaixo
 (ex: `aiops-etl-lab-renan`) — é o sufixo do nome do bucket S3, que precisa
 ser globalmente único na AWS.
 
@@ -105,7 +105,7 @@ de Limpeza do pipeline existe."*
 
 🖥️ **Comando:**
 ```bash
-aws s3 mb s3://aiops-etl-lab-SEUNOME --region us-east-1
+aws s3 mb s3://aiops-etl-lab-renan\ --region us-east-1
 ```
 
 ⚠️ O S3 não tem pastas de verdade — "pastas" são só prefixos no nome dos
@@ -113,10 +113,10 @@ arquivos. Criar o bucket não cria `raw/`, `raw/logs/` etc. automaticamente.
 
 🖥️ **Comando (cria a estrutura de pastas explicitamente):**
 ```bash
-aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/logs/
-aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/metrics/
-aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/notes/
-aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key processed/
+aws s3api put-object --bucket aiops-etl-lab-renan --key raw/logs/
+aws s3api put-object --bucket aiops-etl-lab-renan --key raw/metrics/
+aws s3api put-object --bucket aiops-etl-lab-renan --key raw/notes/
+aws s3api put-object --bucket aiops-etl-lab-renan --key processed/
 ```
 (Alternativa: pule esses 4 comandos — o upload da Etapa 3 já cria o caminho
 sozinho ao apontar para `raw/logs/logs.jsonl`, por exemplo.)
@@ -128,9 +128,9 @@ de arquivo com barras — não existe uma 'pasta' real por trás."*
 
 🖥️ **Comando:**
 ```bash
-aws s3 cp logs.jsonl    s3://aiops-etl-lab-SEUNOME/raw/logs/
-aws s3 cp metrics.csv   s3://aiops-etl-lab-SEUNOME/raw/metrics/
-aws s3 cp notes.txt     s3://aiops-etl-lab-SEUNOME/raw/notes/
+aws s3 cp logs.jsonl    s3://aiops-etl-lab-renan/raw/logs/
+aws s3 cp metrics.csv   s3://aiops-etl-lab-renan/raw/metrics/
+aws s3 cp notes.txt     s3://aiops-etl-lab-renan/raw/notes/
 ```
 
 🎤 **Fala:** *(nenhuma nova — já foi dita na Etapa 1)*
@@ -139,7 +139,7 @@ aws s3 cp notes.txt     s3://aiops-etl-lab-SEUNOME/raw/notes/
 
 🖥️ **Console:** AWS Glue → Crawlers → Create crawler
 - Nome: `raw-data-crawler`
-- Data source: S3, path `s3://aiops-etl-lab-SEUNOME/raw/`
+- Data source: S3, path `s3://aiops-etl-lab-renan/raw/`
 - IAM Role: crie uma nova (ex: `AWSGlueServiceRole-raw-data-crawler`)
 - Destino: Database novo, ex: `aiops_lab_db`
 - Rode o crawler (~1-2 min)
@@ -162,13 +162,13 @@ cat > lab-s3-policy.json << 'EOF'
       "Sid": "AllowLabBucketAccess",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::aiops-etl-lab-SEUNOME/*"
+      "Resource": "arn:aws:s3:::aiops-etl-lab-renan/*"
     },
     {
       "Sid": "AllowLabBucketListing",
       "Effect": "Allow",
       "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::aiops-etl-lab-SEUNOME"
+      "Resource": "arn:aws:s3:::aiops-etl-lab-renan"
     }
   ]
 }
@@ -189,8 +189,8 @@ mencionar: "aqui eu já liberei a permissão da role de acesso ao bucket".)*
 🖥️ **Console:** AWS Glue → Jobs → Create job → Spark script editor
 1. Cole o conteúdo de `etl_job.py`
 2. Job parameters:
-   - `--RAW_BUCKET` = `aiops-etl-lab-SEUNOME`
-   - `--PROCESSED_BUCKET` = `aiops-etl-lab-SEUNOME`
+   - `--RAW_BUCKET` = `aiops-etl-lab-renan`
+   - `--PROCESSED_BUCKET` = `aiops-etl-lab-renan`
 3. IAM Role: a mesma role da Etapa 4 (já com a policy do bucket)
 4. Salve e clique em **Run**
 
@@ -226,7 +226,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS aiops_lab_db.logs_enriched (
 )
 PARTITIONED BY (ingestion_date string)
 STORED AS PARQUET
-LOCATION 's3://aiops-etl-lab-SEUNOME/processed/logs_enriched/';
+LOCATION 's3://aiops-etl-lab-renan\/processed/logs_enriched/';
 
 MSCK REPAIR TABLE logs_enriched;
 ```
@@ -389,7 +389,7 @@ por 2-3 min antes de você responder:
 
 🖥️ **Comando (cleanup, se não for reusar o ambiente tão cedo):**
 ```bash
-aws s3 rb s3://aiops-etl-lab-SEUNOME --force
+aws s3 rb s3://aiops-etl-lab-renan\ --force
 aws glue delete-job --job-name aiops-etl-job
 aws glue delete-crawler --name raw-data-crawler
 aws glue delete-database --name aiops_lab_db

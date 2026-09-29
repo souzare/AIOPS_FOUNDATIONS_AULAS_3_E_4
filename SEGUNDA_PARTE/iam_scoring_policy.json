@@ -5,7 +5,7 @@
       "Sid": "PublishAlerts",
       "Effect": "Allow",
       "Action": "sns:Publish",
-      "Resource": "arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts"
+      "Resource": "arn:aws:sns:us-east-1:640388149711:aiops-lab-alerts"
     },
     {
       "Sid": "PutMetrics",
