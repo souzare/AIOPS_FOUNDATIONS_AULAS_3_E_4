@@ -1,0 +1,1 @@
+{"service": "search-api", "level": "INFO", "response_time_ms": 85.0, "message": "request processed successfully", "trace_id": "demo-normal-001", "severity_score": 7, "is_critical": false, "detected_at": 1790711506.1210215, "action": "no_action"}
