@@ -1,9 +1,12 @@
-# AIOps Foundation — Guia Completo do Instrutor (Módulo 3 + Módulo 4)
+# AIOps Foundation — Guia Completo do Instrutor (Curso Completo)
 
-Este é o único documento que você precisa durante a aula. Ele combina o
-**passo a passo técnico** (todo comando que você vai rodar, no console ou no
-terminal) com a **fala sugerida** para cada etapa, na ordem em que você vai
-executar.
+Este é o único documento que você precisa durante o curso inteiro. Ele
+combina o **passo a passo técnico** (todo comando que você vai rodar, no
+console ou no terminal) com a **fala sugerida** para cada etapa, cobrindo as
+duas partes da demo:
+
+- **PRIMEIRA_PARTE** — Módulos 3 e 4 (ETL / Big Data + Aprendizado Supervisionado)
+- **SEGUNDA_PARTE** — Fechamento do curso (Colaboração + Remediação Automatizada)
 
 **Como ler este guia:**
 - 🖥️ = comando ou ação técnica (execute isso)
@@ -12,50 +15,95 @@ executar.
   turma, sem nada para clicar ou digitar. Esses pontos estão marcados
   explicitamente para você não se perguntar "cadê o comando desse passo?"
 
-> Custo estimado: dentro do Free Tier na quase totalidade. Athena cobra
-> ~$5/TB escaneado (sem free tier), mas com este dataset (poucos MB) o custo
-> fica em frações de centavo.
+> Custo estimado: dentro do Free Tier / "Always Free" na quase totalidade.
+> Athena cobra ~$5/TB escaneado (sem free tier, mas frações de centavo com
+> este dataset). Lambda, SNS, DynamoDB e CloudWatch ficam no "Always Free"
+> para o volume de uma demo de aula. Custo real esperado: R$ 0,00.
 
 ---
 
-## Arquivos deste diretório
+## Estrutura do repositório
 
 ```
-generate_data.py               → script que gera os dados sintéticos (rode antes da aula)
-logs.jsonl, metrics.csv, notes.txt   → dados já gerados, prontos para upload
-etl_job.py                     → script PySpark do Glue Job (Módulo 3)
-queries.sql                    → queries de exemplo para o Athena (Módulo 3)
-athena_export_query.sql        → query para exportar o CSV usado no Módulo 4
-supervised_learning_demo.ipynb → notebook de aprendizado supervisionado (Módulo 4)
-requirements.txt               → dependências do notebook (se for rodar localmente)
+aiops-foundation-labs/
+├── README.md                        → este arquivo (guia único)
+├── PRIMEIRA_PARTE/                  → Módulos 3 e 4
+│   ├── generate_data.py               script que gera os dados sintéticos
+│   ├── logs.jsonl, metrics.csv, notes.txt   dados já gerados, prontos para upload
+│   ├── etl_job.py                     script PySpark do Glue Job (Módulo 3)
+│   ├── queries.sql                    queries de exemplo para o Athena (Módulo 3)
+│   ├── athena_export_query.sql        query para exportar o CSV usado no Módulo 4
+│   ├── supervised_learning_demo.ipynb notebook de aprendizado supervisionado (Módulo 4)
+│   └── requirements.txt               dependências do notebook (se for rodar localmente)
+└── SEGUNDA_PARTE/                    → Fechamento do curso
+    ├── scoring_lambda.py               Lambda de "Insights": pontua o evento
+    ├── remediation_lambda.py           Lambda de "Remediação": age e registra o incidente
+    ├── test_event_critical.json        evento de teste que DEVE disparar notificação + remediação
+    ├── test_event_normal.json          evento de teste que NÃO deve disparar nada além da métrica
+    ├── lambda_trust_policy.json        trust policy padrão (permite Lambda assumir a role)
+    ├── iam_scoring_policy.json         permissões da role da Lambda de scoring
+    ├── iam_remediation_policy.json     permissões da role da Lambda de remediação
+    ├── env-scoring.json                variáveis de ambiente da Lambda de scoring
+    ├── env-remediation.json            variáveis de ambiente da Lambda de remediação
+    └── env-remediation-closeloop.json  variáveis de ambiente (com o bônus de fechar o ciclo no S3)
 ```
 
-Substitua `renan\` por um identificador seu em todos os comandos abaixo
-(ex: `aiops-etl-lab-renan`) — é o sufixo do nome do bucket S3, que precisa
-ser globalmente único na AWS.
+> ⚠️ **Sobre comandos multi-linha (`\`):** se o seu terminal quebrar ou
+> misturar um comando ao colar (sintomas: erro de parsing estranho, ou um
+> comando inteiro aparecendo "dentro" de outro), copie o comando inteiro em
+> **uma única linha** em vez de linha por linha com `\` no final — alguns
+> terminais (principalmente PowerShell/CMD no Windows, ou certos
+> emuladores) não lidam bem com continuação de linha em bash. Os comandos
+> `--environment` deste guia já foram desenhados para usar um arquivo
+> `file://` em vez da sintaxe inline `Variables={...}` exatamente para
+> evitar esse tipo de problema.
+
+**Convenção de diretório:** toda vez que este guia mostra um comando com um
+nome de arquivo simples (ex: `generate_data.py`, `scoring_lambda.py`), ele
+assume que você já está dentro da pasta certa (`PRIMEIRA_PARTE/` ou
+`SEGUNDA_PARTE/`). Cada Parte abaixo começa com uma ação explícita de `cd`
+para deixar isso claro.
+
+Substitua `SEUNOME` por um identificador seu em todos os comandos (ex:
+`aiops-etl-lab-renan`) — é o sufixo do nome do bucket S3, que precisa ser
+globalmente único na AWS. Substitua `ACCOUNT_ID` pelo ID da sua conta:
+```bash
+aws sts get-caller-identity --query Account --output text
+```
 
 ---
 
-# 🗓️ Preparação (no dia anterior à aula, sem plateia)
+# 🗓️ Preparação geral (no dia anterior à aula, sem plateia)
 
 Construir tudo do zero ao vivo consome tempo de aula sem ganho pedagógico
-proporcional. Faça esta lista uma vez, com calma:
+proporcional. Faça esta lista uma vez, com calma — na ordem, já que a
+SEGUNDA_PARTE depende do bucket e da tabela criados na PRIMEIRA_PARTE.
 
-- [ ] Rodar `generate_data.py` (Etapa 0 abaixo)
+**PRIMEIRA_PARTE (Módulos 3 e 4):**
+- [ ] `cd PRIMEIRA_PARTE` e rodar `generate_data.py` (Etapa 0)
 - [ ] Criar bucket S3 + estrutura de pastas (Etapa 1)
 - [ ] Upload dos dados brutos (Etapa 2)
 - [ ] Criar o Crawler + corrigir a permissão IAM (Etapa 3)
 - [ ] Criar o Glue Job, mas **não rode ainda** — deixe pronto para clicar "Run" ao vivo (Etapa 4)
-- [ ] Testar o Job uma vez, fora da aula, para garantir que funciona (pode rodar de novo ao vivo sem problema — `mode("overwrite")` sobrescreve)
+- [ ] Testar o Job uma vez, fora da aula (pode rodar de novo ao vivo sem problema — `mode("overwrite")` sobrescreve)
 - [ ] Catalogar os dados processados como `logs_enriched` (Etapa 5)
 - [ ] Configurar o "Query result location" do Athena com antecedência
-- [ ] Rodar `athena_export_query.sql` uma vez e testar o notebook inteiro (Módulo 4), garantindo que roda sem erro
-- [ ] Deixar as abas do navegador já logadas e organizadas: S3, Glue (Crawlers e Jobs), Athena, e o notebook (Colab)
-- [ ] **Fallback:** capture screenshots dos resultados-chave (contagem raw vs. processed, output do notebook) para o caso de instabilidade de rede/AWS ao vivo
+- [ ] Rodar `athena_export_query.sql` uma vez e testar o notebook inteiro (Módulo 4)
+- [ ] Deixar as abas do navegador já logadas e organizadas: S3, Glue, Athena, Colab
+
+**SEGUNDA_PARTE (Colaboração e Remediação):**
+- [ ] `cd SEGUNDA_PARTE` (a partir da raiz do repositório) e criar o tópico SNS + confirmar a inscrição do seu e-mail (Etapa 11)
+- [ ] Criar a tabela DynamoDB (Etapa 12)
+- [ ] Criar as duas roles IAM e publicar as duas Lambdas (Etapas 13, 14, 17, 18)
+- [ ] Inscrever a Lambda de remediação no tópico SNS (Etapa 19)
+- [ ] Rodar o ciclo completo uma vez, fora da aula, para garantir que tudo dispara certo (Etapa 20)
+- [ ] **Fallback:** capture screenshots do e-mail recebido, do item aparecendo no DynamoDB, e das métricas no CloudWatch — para o caso de instabilidade ao vivo
 
 ---
 
 # PARTE 1 — MÓDULO 3: ETL / Big Data (~30 min de aula)
+
+🖥️ **Ação inicial:** a partir da raiz do repositório, `cd PRIMEIRA_PARTE`
 
 ## 💬 Abertura (0-5 min) — sem comando
 
@@ -105,7 +153,7 @@ de Limpeza do pipeline existe."*
 
 🖥️ **Comando:**
 ```bash
-aws s3 mb s3://aiops-etl-lab-renan\ --region us-east-1
+aws s3 mb s3://aiops-etl-lab-SEUNOME --region us-east-1
 ```
 
 ⚠️ O S3 não tem pastas de verdade — "pastas" são só prefixos no nome dos
@@ -113,10 +161,10 @@ arquivos. Criar o bucket não cria `raw/`, `raw/logs/` etc. automaticamente.
 
 🖥️ **Comando (cria a estrutura de pastas explicitamente):**
 ```bash
-aws s3api put-object --bucket aiops-etl-lab-renan --key raw/logs/
-aws s3api put-object --bucket aiops-etl-lab-renan --key raw/metrics/
-aws s3api put-object --bucket aiops-etl-lab-renan --key raw/notes/
-aws s3api put-object --bucket aiops-etl-lab-renan --key processed/
+aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/logs/
+aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/metrics/
+aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key raw/notes/
+aws s3api put-object --bucket aiops-etl-lab-SEUNOME --key processed/
 ```
 (Alternativa: pule esses 4 comandos — o upload da Etapa 3 já cria o caminho
 sozinho ao apontar para `raw/logs/logs.jsonl`, por exemplo.)
@@ -128,9 +176,9 @@ de arquivo com barras — não existe uma 'pasta' real por trás."*
 
 🖥️ **Comando:**
 ```bash
-aws s3 cp logs.jsonl    s3://aiops-etl-lab-renan/raw/logs/
-aws s3 cp metrics.csv   s3://aiops-etl-lab-renan/raw/metrics/
-aws s3 cp notes.txt     s3://aiops-etl-lab-renan/raw/notes/
+aws s3 cp logs.jsonl    s3://aiops-etl-lab-SEUNOME/raw/logs/
+aws s3 cp metrics.csv   s3://aiops-etl-lab-SEUNOME/raw/metrics/
+aws s3 cp notes.txt     s3://aiops-etl-lab-SEUNOME/raw/notes/
 ```
 
 🎤 **Fala:** *(nenhuma nova — já foi dita na Etapa 1)*
@@ -139,7 +187,7 @@ aws s3 cp notes.txt     s3://aiops-etl-lab-renan/raw/notes/
 
 🖥️ **Console:** AWS Glue → Crawlers → Create crawler
 - Nome: `raw-data-crawler`
-- Data source: S3, path `s3://aiops-etl-lab-renan/raw/`
+- Data source: S3, path `s3://aiops-etl-lab-SEUNOME/raw/`
 - IAM Role: crie uma nova (ex: `AWSGlueServiceRole-raw-data-crawler`)
 - Destino: Database novo, ex: `aiops_lab_db`
 - Rode o crawler (~1-2 min)
@@ -162,13 +210,13 @@ cat > lab-s3-policy.json << 'EOF'
       "Sid": "AllowLabBucketAccess",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::aiops-etl-lab-renan/*"
+      "Resource": "arn:aws:s3:::aiops-etl-lab-SEUNOME/*"
     },
     {
       "Sid": "AllowLabBucketListing",
       "Effect": "Allow",
       "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::aiops-etl-lab-renan"
+      "Resource": "arn:aws:s3:::aiops-etl-lab-SEUNOME"
     }
   ]
 }
@@ -189,8 +237,8 @@ mencionar: "aqui eu já liberei a permissão da role de acesso ao bucket".)*
 🖥️ **Console:** AWS Glue → Jobs → Create job → Spark script editor
 1. Cole o conteúdo de `etl_job.py`
 2. Job parameters:
-   - `--RAW_BUCKET` = `aiops-etl-lab-renan`
-   - `--PROCESSED_BUCKET` = `aiops-etl-lab-renan`
+   - `--RAW_BUCKET` = `aiops-etl-lab-SEUNOME`
+   - `--PROCESSED_BUCKET` = `aiops-etl-lab-SEUNOME`
 3. IAM Role: a mesma role da Etapa 4 (já com a policy do bucket)
 4. Salve e clique em **Run**
 
@@ -226,7 +274,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS aiops_lab_db.logs_enriched (
 )
 PARTITIONED BY (ingestion_date string)
 STORED AS PARQUET
-LOCATION 's3://aiops-etl-lab-renan\/processed/logs_enriched/';
+LOCATION 's3://aiops-etl-lab-SEUNOME/processed/logs_enriched/';
 
 MSCK REPAIR TABLE logs_enriched;
 ```
@@ -315,6 +363,7 @@ vamos ver no Módulo 4."*
 # PARTE 2 — MÓDULO 4: Aprendizado Supervisionado (~15-20 min de aula)
 
 Pode acontecer em outro dia — só reforce a conexão com o Módulo 3 no início.
+Você ainda está em `PRIMEIRA_PARTE/`, nenhum `cd` novo é necessário.
 
 ## Etapa 8 — Exportar os dados do Athena
 
@@ -353,23 +402,37 @@ supervisionado precisa para aprender."*
 
 🖥️ **Ação:** rode o **Experimento A** (todas as features).
 
-🎤 **Fala:** *"A acurácia deve sair bem alta, acima de 95%. Pergunta pra
-vocês: isso é o modelo sendo bom, ou fomos nós que demos cola?"* — deixe a
-turma perceber que o rótulo veio das próprias features usadas para treinar.
+🎤 **Fala:** *"A acurácia sai em 100%. Pergunta pra vocês: isso é o modelo
+sendo bom, ou fomos nós que demos cola?"* — deixe a turma perceber que o
+rótulo veio das próprias features usadas para treinar. Resultado perfeito em
+ML é motivo de desconfiança, não de comemoração.
 
-🖥️ **Ação:** rode o **Experimento B** (sem `response_time_ms`).
+🖥️ **Ação:** rode o **Experimento B** (sem `level` e sem `response_time_ms`,
+só `service`).
 
-🎤 **Fala:** *"A acurácia cai. Isso conecta direto com o Módulo 3: a
-qualidade dos dados de entrada limita o modelo — e com o Módulo 8: 'não
-dedique tempo a ML até ter dados sólidos disponíveis'."*
+🎤 **Fala:** *"Agora tiramos as variáveis que carregam o sinal, e a acurácia
+cai para ~84%. Parece razoável, mas olhem o `recall` da classe 1: zero. O
+modelo não encontrou nenhum evento crítico. E 84% é exatamente o que
+'sempre dizer que não é crítico' já acertaria — é o baseline que aparece
+logo abaixo."* Conecte com o Módulo 3 (a qualidade e disponibilidade dos
+dados limitam o modelo) e com o Módulo 8 (*'não dedique tempo a ML até ter
+dados sólidos disponíveis'*).
+
+💬 **Pergunta para a turma (sem comando):** *"Por que tirar só o
+`response_time_ms` não derrubou a acurácia?"* — porque `level = ERROR` já
+carrega o mesmo sinal (features redundantes). Foi preciso remover as duas
+para o modelo ficar cego.
 
 🖥️ **Ação:** rode a célula que imprime/plota a árvore de decisão.
 
 🎤 **Fala:** *"Por que usar um modelo interpretável em AIOps? Porque o time
 de operações precisa confiar na decisão antes de automatizar uma
-remediação"* — gancho para o conceito de Remediação do Módulo 1.
+remediação. Olhem a árvore: uma única regra, 'level é ERROR?', e só. Dá pra
+ler, validar e questionar — com uma rede neural não daria."* Gancho para o
+conceito de Remediação do Módulo 1, e é exatamente isso que fechamos na
+Parte 3.
 
-## 💬 Discussão final (2-3 min) — sem comando
+## 💬 Discussão final do notebook (2-3 min) — sem comando
 
 As perguntas já estão no final do notebook. Deixe a turma discutir em grupo
 por 2-3 min antes de você responder:
@@ -385,21 +448,327 @@ por 2-3 min antes de você responder:
 
 ---
 
-# ✅ Depois da aula
+# PARTE 3 — Colaboração e Remediação Automatizada (Fechamento, ~20-25 min)
 
-🖥️ **Comando (cleanup, se não for reusar o ambiente tão cedo):**
+🖥️ **Ação inicial:** a partir da raiz do repositório, `cd SEGUNDA_PARTE`
+(se você ainda estiver dentro de `PRIMEIRA_PARTE/`, use `cd ../SEGUNDA_PARTE`)
+
+> Pré-requisito: o bucket `aiops-etl-lab-SEUNOME` e a tabela `logs_enriched`
+> da Parte 1 já precisam existir. Esta parte não recria aquele pipeline, ela
+> se conecta a ele.
+
+## 💬 Contexto (0-3 min) — sem comando
+
+🎤 **Fala:** *"No Módulo 3, processamos dados em lote e consultamos com SQL.
+No Módulo 4, treinamos um modelo que aprende a classificar eventos. Agora
+vamos ver o que falta: pegar essa classificação e transformar em ação — sem
+um humano precisar estar olhando a tela o tempo todo. Isso fecha o ciclo que
+vocês viram lá no Módulo 1: Ingestão, Insights, Colaboração, Remediação."*
+
+---
+
+## Etapa 11 — Criar o tópico SNS e inscrever seu e-mail
+
+🖥️ **Comando:**
 ```bash
-aws s3 rb s3://aiops-etl-lab-renan\ --force
+aws sns create-topic --name aiops-lab-alerts
+```
+Anote o `TopicArn` retornado — vamos usar em vários passos seguintes.
+
+🖥️ **Comando (inscreva seu e-mail para receber o alerta ao vivo em aula):**
+```bash
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts \
+  --protocol email \
+  --notification-endpoint seu-email@exemplo.com
+```
+
+⚠️ Depois desse comando, **confirme a inscrição no seu e-mail** (a AWS manda
+um link de confirmação) — sem isso, o SNS não entrega a notificação.
+
+🎤 **Fala:** *"O SNS é um sistema de publicação/assinatura: alguém publica
+uma mensagem, e todo mundo inscrito recebe — e-mail, SMS, ou até outra
+Lambda, como vamos ver daqui a pouco. Essa é a peça de Colaboração do
+Módulo 1: o sistema avisando um humano, com contexto, em vez de deixar o
+problema silencioso."*
+
+## Etapa 12 — Criar a tabela DynamoDB
+
+🖥️ **Comando:**
+```bash
+aws dynamodb create-table \
+  --table-name aiops_lab_incidents \
+  --attribute-definitions AttributeName=incident_id,AttributeType=S \
+  --key-schema AttributeName=incident_id,KeyType=HASH \
+  --billing-mode PROVISIONED \
+  --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+```
+(5/5 de capacidade fica bem dentro do free tier de 25/25 — e é mais do que
+suficiente para uma demo de aula)
+
+🎤 **Fala:** *"O DynamoDB vai funcionar como um mini sistema de tickets —
+cada remediação automática vira um registro aqui, com o que foi detectado e
+o que foi feito a respeito."*
+
+## Etapa 13 — Criar a role IAM da Lambda de scoring
+
+🖥️ **Comando:**
+```bash
+aws iam create-role \
+  --role-name aiops-lab-scoring-role \
+  --assume-role-policy-document file://lambda_trust_policy.json
+
+aws iam attach-role-policy \
+  --role-name aiops-lab-scoring-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+aws iam put-role-policy \
+  --role-name aiops-lab-scoring-role \
+  --policy-name aiops-lab-scoring-permissions \
+  --policy-document file://iam_scoring_policy.json
+```
+
+> ⚠️ Antes de rodar, edite `iam_scoring_policy.json` e troque `ACCOUNT_ID`
+> pelo ID real da sua conta.
+
+🎤 **Fala:** *"De novo o princípio de privilégio mínimo — essa role só pode
+publicar no nosso tópico SNS e mandar métricas pro CloudWatch. Nada além
+disso."*
+
+## Etapa 14 — Publicar a Lambda de scoring
+
+🖥️ **Ação:** edite `env-scoring.json` e troque `ACCOUNT_ID` pelo ID real da
+sua conta (`aws sts get-caller-identity --query Account --output text`).
+
+🖥️ **Comando (rode como uma única linha, sem quebra `\`):**
+```bash
+zip scoring_lambda.zip scoring_lambda.py
+```
+```bash
+aws lambda create-function --function-name aiops-lab-scoring --runtime python3.12 --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-scoring-role --handler scoring_lambda.lambda_handler --zip-file fileb://scoring_lambda.zip --timeout 10 --environment file://env-scoring.json
+```
+
+> Usamos um arquivo `file://env-scoring.json` em vez da sintaxe inline
+> `Variables={...}` porque o `{`, `}` e `:` dentro dela costumam quebrar em
+> alguns terminais (principalmente ao colar um comando multi-linha) —
+> o arquivo é mais robusto e funciona igual em qualquer shell.
+
+🎤 **Fala:** *"Essa função replica a mesma fórmula que usamos no Glue Job do
+Módulo 3 — que é exatamente a lógica que o modelo do Módulo 4 aprendeu a
+reproduzir no Experimento A. Em produção, você carregaria o modelo
+serializado; aqui replicamos a regra direto em código pra manter a Lambda
+simples e sem dependências extras."*
+
+## 💬 Enquanto isso... (opcional, se quiser aprofundar) — sem comando
+
+🎤 **Fala (opcional):** *"Notem que essa Lambda não sabe nada sobre 'Big
+Data' — ela processa um evento de cada vez, em milissegundos. É a diferença
+entre o processamento em lote que fizemos no Athena (Módulo 3) e
+processamento em tempo real. Os dois têm seu lugar: lote para análise
+histórica e tendências, tempo real para reagir rápido."*
+
+---
+
+## Etapa 15 — Invocar com um evento normal
+
+🖥️ **Comando:**
+```bash
+aws lambda invoke \
+  --function-name aiops-lab-scoring \
+  --payload file://test_event_normal.json \
+  --cli-binary-format raw-in-base64-out \
+  response_normal.json
+
+cat response_normal.json
+```
+
+🎤 **Fala (antes de rodar):** *"Esse evento é um log `INFO` comum, com
+tempo de resposta baixo. Esperamos que `is_critical` saia `false` e nada
+mais aconteça além de uma métrica de volume."*
+
+## Etapa 16 — Invocar com um evento crítico
+
+🖥️ **Comando:**
+```bash
+aws lambda invoke \
+  --function-name aiops-lab-scoring \
+  --payload file://test_event_critical.json \
+  --cli-binary-format raw-in-base64-out \
+  response_critical.json
+
+cat response_critical.json
+```
+
+🎤 **Fala (antes de rodar):** *"Esse é um `ERROR` com tempo de resposta
+alto — deve dar `is_critical: true`. Se a inscrição de e-mail já foi
+confirmada, o alerta deve chegar na sua caixa de entrada em segundos.
+Vamos ver ao vivo."*
+
+💬 **Enquanto o e-mail não chega (sem comando):** *"Enquanto aguardamos,
+pensem: hoje esse alerta caiu só no meu e-mail. Daqui a pouco, em vez de um
+humano precisar agir manualmente, vamos deixar outra função fazer isso
+sozinha."*
+
+---
+
+## Etapa 17 — Criar a role IAM da Lambda de remediação
+
+🖥️ **Comando:**
+```bash
+aws iam create-role \
+  --role-name aiops-lab-remediation-role \
+  --assume-role-policy-document file://lambda_trust_policy.json
+
+aws iam attach-role-policy \
+  --role-name aiops-lab-remediation-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+aws iam put-role-policy \
+  --role-name aiops-lab-remediation-role \
+  --policy-name aiops-lab-remediation-permissions \
+  --policy-document file://iam_remediation_policy.json
+```
+
+> ⚠️ Edite `iam_remediation_policy.json` antes: troque `ACCOUNT_ID` e, se for
+> usar o bônus de fechar o ciclo no S3 (Etapa 21), confira o nome do bucket.
+
+## Etapa 18 — Publicar a Lambda de remediação
+
+🖥️ **Comando:**
+🖥️ **Comando (rode como uma única linha, sem quebra `\`):**
+```bash
+zip remediation_lambda.zip remediation_lambda.py
+```
+```bash
+aws lambda create-function --function-name aiops-lab-remediation --runtime python3.12 --role arn:aws:iam::ACCOUNT_ID:role/aiops-lab-remediation-role --handler remediation_lambda.lambda_handler --zip-file fileb://remediation_lambda.zip --timeout 10 --environment file://env-remediation.json
+```
+
+> `env-remediation.json` já vem pronto (não precisa editar `ACCOUNT_ID` —
+> ele só referencia a tabela DynamoDB, que não tem ID de conta no nome).
+
+🎤 **Fala:** *"Essa função tem um 'playbook' simples: um mapa de qual serviço
+recebe qual ação de correção. Numa empresa real, isso viria de uma base de
+conhecimento documentada — é literalmente o que o Módulo 1 chama de
+'Conhecimento, Automação e Colaboração'."*
+
+## Etapa 19 — Inscrever a Lambda de remediação no tópico SNS
+
+🖥️ **Comando:**
+```bash
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts \
+  --protocol lambda \
+  --notification-endpoint arn:aws:lambda:us-east-1:ACCOUNT_ID:function:aiops-lab-remediation
+
+aws lambda add-permission \
+  --function-name aiops-lab-remediation \
+  --statement-id sns-invoke-remediation \
+  --action lambda:InvokeFunction \
+  --principal sns.amazonaws.com \
+  --source-arn arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts
+```
+
+🎤 **Fala:** *"Isso conecta as duas pontas: agora, toda vez que a Lambda de
+scoring publicar um evento crítico no SNS, a Lambda de remediação dispara
+sozinha — sem ninguém clicar em nada."*
+
+## Etapa 20 — Rodar o ciclo completo, ao vivo
+
+🖥️ **Comando (o mesmo da Etapa 16 — mas agora o efeito é diferente):**
+```bash
+aws lambda invoke \
+  --function-name aiops-lab-scoring \
+  --payload file://test_event_critical.json \
+  --cli-binary-format raw-in-base64-out \
+  response_critical.json
+```
+
+🖥️ **Ação:** enquanto isso roda, abra em paralelo:
+- O **DynamoDB Console** → tabela `aiops_lab_incidents` → **Explore table
+  items** → deve aparecer um novo item em segundos
+- O **CloudWatch Console** → **Metrics** → namespace `AIOpsLab` → métricas
+  `EventsProcessed`, `CriticalEventsDetected`, `RemediationsExecuted`,
+  `TimeToRemediateSeconds`
+
+🎤 **Fala:** *"Olha o que aconteceu: um evento entrou, foi pontuado, virou
+notificação, virou remediação automática, e ficou registrado — tudo em
+segundos, sem intervenção humana. Isso é o ciclo Ingestão → Insights →
+Colaboração → Remediação do Módulo 1, rodando de verdade."*
+
+---
+
+## 💬 (Opcional/bônus) Etapa 21 — Fechar o ciclo de volta ao S3
+
+Se quiser ir além e mostrar o ciclo se retroalimentando:
+
+🖥️ **Ação:** edite `env-remediation-closeloop.json` e troque `SEUNOME` pelo
+nome real do seu bucket (o mesmo da PRIMEIRA_PARTE, ex: `aiops-etl-lab-renan`).
+
+🖥️ **Comando (redeploy da Lambda de remediação com a variável extra, uma única linha):**
+```bash
+aws lambda update-function-configuration --function-name aiops-lab-remediation --environment file://env-remediation-closeloop.json
+```
+
+Depois de rodar a Etapa 20 de novo, confira:
+```bash
+aws s3 ls s3://aiops-etl-lab-SEUNOME/raw/remediations/
+```
+
+🎤 **Fala:** *"Esse evento de remediação virou um novo dado bruto no nosso
+Data Lake — se rodássemos o Crawler e o Glue Job de novo (voltando lá pra
+PRIMEIRA_PARTE), ele entraria no próximo ciclo de processamento. Isso é o
+`↻` do diagrama: o sistema observando a própria ação."*
+
+---
+
+## 💬 Fechamento do curso (5 min) — sem comando
+
+🎤 **Fala:** *"Vamos conectar tudo: no Módulo 5 vocês aprenderam sobre MTTD e
+MTTA — tempo médio para detectar e para reconhecer um incidente. Hoje, esse
+tempo foi de segundos, do log chegando até a remediação registrada. No
+Módulo 7, vocês viram que medir o impacto do AIOps é uma das maiores
+dificuldades citadas pelo Gartner — mas aqui, o próprio CloudWatch já
+guardou os números pra gente mostrar num dashboard."*
+
+*"E a última pergunta, ligando com o Módulo 8: será que automatizar 100%
+como fizemos aqui é sempre a decisão certa? O que vocês automatizariam, e o
+que ainda manteriam com um humano no controle?"*
+
+---
+
+# ✅ Depois do curso — Cleanup completo
+
+🖥️ **Comando (dentro de `PRIMEIRA_PARTE/`, se não for reusar o ambiente tão cedo):**
+```bash
+aws s3 rb s3://aiops-etl-lab-SEUNOME --force
 aws glue delete-job --job-name aiops-etl-job
 aws glue delete-crawler --name raw-data-crawler
 aws glue delete-database --name aiops_lab_db
 ```
+
+🖥️ **Comando (dentro de `SEGUNDA_PARTE/`):**
+```bash
+aws lambda delete-function --function-name aiops-lab-scoring
+aws lambda delete-function --function-name aiops-lab-remediation
+aws dynamodb delete-table --table-name aiops_lab_incidents
+aws sns delete-topic --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:aiops-lab-alerts
+aws iam delete-role-policy --role-name aiops-lab-scoring-role --policy-name aiops-lab-scoring-permissions
+aws iam detach-role-policy --role-name aiops-lab-scoring-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+aws iam delete-role --role-name aiops-lab-scoring-role
+aws iam delete-role-policy --role-name aiops-lab-remediation-role --policy-name aiops-lab-remediation-permissions
+aws iam detach-role-policy --role-name aiops-lab-remediation-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+aws iam delete-role --role-name aiops-lab-remediation-role
+```
+
 Se for reaproveitar para outra turma na mesma semana, não precisa desmontar
-— só rode o Glue Job de novo (ele sobrescreve os dados).
+nada — só rode o Glue Job e os testes das Lambdas de novo (tudo sobrescreve
+sem criar duplicidade).
 
 ---
 
 # 🧯 Troubleshooting
+
+### Módulos 3 e 4 (PRIMEIRA_PARTE)
 
 | Problema | Causa provável |
 |---|---|
@@ -408,8 +777,22 @@ Se for reaproveitar para outra turma na mesma semana, não precisa desmontar
 | Athena: `TABLE_NOT_FOUND: ... logs_enriched does not exist` | Tabela ainda não criada — rode `SHOW TABLES IN aiops_lab_db;` e confira, ou repita a Etapa 6 |
 | Athena retorna 0 linhas | Esqueceu do `MSCK REPAIR TABLE logs_enriched;` após o job rodar |
 | Job demora muito (>10 min) | Normal no cold start dos workers Spark; considere `Python Shell` como Job Type para algo mais leve |
+| Glue Job falha com `CANNOT_PARSE_TIMESTAMP ... Text '' could not be parsed` | Spark com modo ANSI lança erro (em vez de NULL) ao converter timestamps inválidos (`""`, `not-a-timestamp`, `20/09/2026 13:45`, epoch cru). O `etl_job.py` atual já valida o formato com regex antes do `to_timestamp` — copie a versão mais recente do script para o Glue |
 | Notebook: `KeyError: 'is_critical'` | Alguma célula anterior não rodou — use "Executar tudo" (Runtime → Run all) em vez de rodar célula avulsa |
 | Notebook: CSV não encontrado | No Colab, o upload manual some ao reiniciar a sessão — suba o CSV de novo |
+
+### Colaboração e Remediação (SEGUNDA_PARTE)
+
+| Problema | Causa provável |
+|---|---|
+| E-mail do SNS nunca chega | A inscrição precisa ser confirmada pelo link enviado por e-mail (Etapa 11) antes de qualquer publicação funcionar |
+| `aws lambda invoke` retorna erro de permissão | A role não tem a policy anexada corretamente, ou `ACCOUNT_ID`/ARN errado nos arquivos JSON |
+| Lambda de remediação não dispara sozinha | Falta a Etapa 19 (subscribe + add-permission) — sem isso, o SNS não tem autorização para invocar a função |
+| Item não aparece no DynamoDB | Confira se `DYNAMODB_TABLE` está correta na variável de ambiente da Lambda de remediação, e se a tabela existe (Etapa 12) |
+| Métricas não aparecem no CloudWatch | Métricas customizadas podem levar 1-2 min para aparecer no console na primeira vez |
+| Erro ao editar os `.json` de política | Lembre de trocar `ACCOUNT_ID` (e `SEUNOME` no bônus da Etapa 21) antes de rodar os comandos que os usam |
+| `InvalidParameter: Invalid namespace: ACCOUNT_ID` (SNS) | Você esqueceu de trocar o `ACCOUNT_ID` literal no comando por um número real — rode `aws sts get-caller-identity --query Account --output text` e substitua |
+| `Error parsing parameter '--environment'` ou o comando inteiro aparece "dentro" de outro | O terminal quebrou a continuação de linha `\` — copie o comando como uma única linha, ou use os arquivos `env-*.json` com `--environment file://...` (já é o padrão deste guia) |
 
 ---
 
@@ -418,6 +801,11 @@ Se for reaproveitar para outra turma na mesma semana, não precisa desmontar
 1. Use os screenshots pré-capturados na preparação
 2. Tenha uma versão do notebook já executada (com outputs salvos) aberta
    localmente como fallback
-3. Priorize a Query 5 do Athena (raw vs. processado) e os Experimentos A/B
-   do notebook — são os dois momentos de maior valor pedagógico; o resto
-   pode ser resumido verbalmente se o tempo apertar
+3. Na Parte 1/2, priorize a Query 5 do Athena (raw vs. processado) e os
+   Experimentos A/B do notebook — os dois momentos de maior valor
+   pedagógico ali
+4. Na Parte 3, se o e-mail do SNS estiver lento, pule direto para checar o
+   **CloudWatch** e o **DynamoDB** — os dois atualizam em segundos e não
+   dependem de entrega de e-mail; use a chegada do e-mail como "bônus" caso
+   apareça durante a explicação seguinte, sem travar a aula esperando por ele
+5. Se o tempo apertar de verdade, o resto pode ser resumido verbalmente
