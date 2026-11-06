@@ -33,6 +33,7 @@ aiops-foundation-labs/
 │   ├── etl_job.py                     script PySpark do Glue Job (Módulo 3)
 │   ├── queries.sql                    queries de exemplo para o Athena (Módulo 3)
 │   ├── athena_export_query.sql        query para exportar o CSV usado no Módulo 4
+│   ├── queries_arvore.sql             queries que mostram no Athena o que a árvore descobriu (Módulo 4)
 │   ├── supervised_learning_demo.ipynb notebook de aprendizado supervisionado (Módulo 4)
 │   └── requirements.txt               dependências do notebook (se for rodar localmente)
 └── SEGUNDA_PARTE/                    → Fechamento do curso
@@ -408,29 +409,193 @@ rótulo veio das próprias features usadas para treinar. Resultado perfeito em
 ML é motivo de desconfiança, não de comemoração.
 
 🖥️ **Ação:** rode o **Experimento B** (sem `level` e sem `response_time_ms`,
-só `service`).
+só `service`). **Mostre onde está a diferença no código** — é uma única linha:
 
-🎤 **Fala:** *"Agora tiramos as variáveis que carregam o sinal, e a acurácia
-cai para ~84%. Parece razoável, mas olhem o `recall` da classe 1: zero. O
-modelo não encontrou nenhum evento crítico. E 84% é exatamente o que
-'sempre dizer que não é crítico' já acertaria — é o baseline que aparece
-logo abaixo."* Conecte com o Módulo 3 (a qualidade e disponibilidade dos
-dados limitam o modelo) e com o Módulo 8 (*'não dedique tempo a ML até ter
-dados sólidos disponíveis'*).
+```python
+# Experimento A: o modelo enxerga service + level + response_time_ms
+features_a = pd.get_dummies(df[["service", "level", "response_time_ms"]], columns=["service", "level"])
+
+# Experimento B: o modelo enxerga APENAS service
+features_b = pd.get_dummies(df[["service"]], columns=["service"])
+```
+
+🎤 **Fala (sobre o código):** *"Não existe um comando 'remover coluna'. O que
+muda é quais colunas eu entrego ao modelo: o `df[[...]]` é o filtro, e no B
+`level` e `response_time_ms` simplesmente não estão na lista. O
+`get_dummies` só converte texto em colunas 0/1, porque a árvore só entende
+número: `level` vira `level_ERROR`, `level_WARN`... O gabarito `y` é o
+mesmo nos dois, e ele foi calculado a partir de `level` e `response_time_ms`
+lá no Glue Job. Ou seja: no B o modelo precisa acertar uma resposta que
+depende de duas colunas que ele não pode ver."*
+
+🎤 **Fala (sobre o resultado):** *"A acurácia cai para ~84%. Parece
+razoável, mas olhem o `recall` da classe 1: zero. O modelo não encontrou
+nenhum evento crítico. E 84% é exatamente o que 'sempre dizer que não é
+crítico' já acertaria — é o baseline que aparece logo abaixo."* Conecte com
+o Módulo 3 (a qualidade e disponibilidade dos dados limitam o modelo) e com
+o Módulo 8 (*'não dedique tempo a ML até ter dados sólidos disponíveis'*).
+
+🖥️ **Ação:** rode a célula seguinte, que mostra a % de críticos por serviço
+e imprime a árvore do B.
+
+🎤 **Fala:** *"Por que o B não aprende? Olhem a % de críticos por serviço:
+nenhum passa de 24%. Em qualquer grupo de serviços a maioria é 'não crítico',
+e a folha da árvore prevê a classe da maioria. Então todas as folhas
+respondem 0. A árvore até cresce, mas nenhuma pergunta muda a resposta
+final."*
 
 💬 **Pergunta para a turma (sem comando):** *"Por que tirar só o
 `response_time_ms` não derrubou a acurácia?"* — porque `level = ERROR` já
 carrega o mesmo sinal (features redundantes). Foi preciso remover as duas
 para o modelo ficar cego.
 
-🖥️ **Ação:** rode a célula que imprime/plota a árvore de decisão.
+🖥️ **Ação:** rode a célula que imprime/plota a árvore de decisão do
+Experimento A.
 
-🎤 **Fala:** *"Por que usar um modelo interpretável em AIOps? Porque o time
-de operações precisa confiar na decisão antes de automatizar uma
-remediação. Olhem a árvore: uma única regra, 'level é ERROR?', e só. Dá pra
-ler, validar e questionar — com uma rede neural não daria."* Gancho para o
-conceito de Remediação do Módulo 1, e é exatamente isso que fechamos na
-Parte 3.
+🎤 **Fala (como a árvore decide):** *"Uma árvore é uma sequência de
+perguntas de sim/não. Ela começa com todos os eventos de treino numa caixa
+só: 543 eventos, 455 não críticos e 88 críticos. Testa várias perguntas
+possíveis e mede o quanto cada grupo resultante fica 'misturado' com o
+índice de Gini: zero é grupo puro, perto de 0,5 é metade a metade. Fica com
+a pergunta que mais reduz a mistura e repete dentro de cada grupo. Para
+prever um evento novo, ele desce pelas perguntas até uma folha, e a resposta
+é a classe da maioria que caiu ali."*
+
+🎤 **Fala (lendo a árvore do A):** *"Olhem: ela achou uma única pergunta,
+`level_ERROR <= 0.5`, ou seja, 'o nível não é ERROR?'. Do lado do sim, 455
+eventos, todos não críticos, Gini zero. Do lado do não, 88 eventos, todos
+críticos, Gini zero. Os dois grupos já ficaram puros, então a árvore parou.
+Em português: se o log é ERROR, é crítico, senão não — a mesma regra que eu
+escrevi à mão no Glue Job, aprendida sozinha."* Cada caixa do gráfico mostra
+a pergunta, o `gini`, quantos eventos chegaram (`samples`), quantos de cada
+classe (`value = [não críticos, críticos]`) e a previsão (`class`).
+
+🎤 **Fala (por que interpretável):** *"Por que usar um modelo interpretável
+em AIOps? Porque o time de operações precisa confiar na decisão antes de
+automatizar uma remediação. Se alguém discordar — 'um WARN com 5 segundos de
+resposta também deveria ser crítico' — a conversa é concreta. Com uma rede
+neural, não daria."* Gancho para o conceito de Remediação do Módulo 1, e é
+exatamente isso que fechamos na Parte 3.
+
+## Etapa 10-B — Mostrar no banco o que a árvore descobriu (Athena, ~5-8 min)
+
+Objetivo: provar que a árvore não faz mágica. Tudo que ela "descobre" é
+**contagem e divisão**, e dá para refazer a conta em SQL, direto na tabela
+`logs_enriched`. As queries estão em `queries_arvore.sql` (mesma pasta
+`PRIMEIRA_PARTE/`); cole uma por vez no editor do Athena, com o database
+`aiops_lab_db` selecionado.
+
+> Os números abaixo são os resultados esperados com os dados gerados por
+> `generate_data.py` (seed 42, 725 eventos após a limpeza do Glue). Se você
+> gerou os dados com outros parâmetros, os valores mudam, mas as conclusões
+> são as mesmas. O notebook treina com 75% dos dados (543 eventos), então o
+> Gini da raiz lá é 0,272 e aqui 0,271 (tabela inteira).
+
+🖥️ **Q1 — A raiz:** total de eventos, quantos são críticos e o Gini inicial.
+
+| total_eventos | criticos | nao_criticos | pct_criticos | gini_raiz |
+|---|---|---|---|---|
+| 725 | 117 | 608 | 16.1 | 0.271 |
+
+🎤 **Fala:** *"Esta é a caixa de cima da árvore: todos os eventos misturados,
+16% críticos. O Gini mede essa mistura: 0 é grupo puro, 0,5 é metade a
+metade. Aqui temos 0,27. O trabalho da árvore é fazer perguntas até esse
+número chegar a zero."*
+
+🖥️ **Q2 — A pergunta do Experimento A:** `level = ERROR`?
+
+| level | total | criticos | pct_criticos | gini | score_min | score_max | previsao_da_folha |
+|---|---|---|---|---|---|---|---|
+| ERROR | 117 | 117 | 100.0 | 0.0 | 94 | 100 | critico |
+| DEBUG | 60 | 0 | 0.0 | 0.0 | 0 | 7 | nao_critico |
+| INFO | 418 | 0 | 0.0 | 0.0 | 5 | 12 | nao_critico |
+| WARN | 130 | 0 | 0.0 | 0.0 | 35 | 42 | nao_critico |
+
+🎤 **Fala:** *"Cada linha é um ramo. ERROR tem 100% de críticos, e todos os
+outros níveis têm 0%. Os dois grupos ficaram puros, com Gini zero. Olhem as
+colunas de score: o menor score de um ERROR é 94 e o maior de um não-ERROR é
+42. O limite de 80 nunca é cruzado por ninguém fora de ERROR. Por isso a
+árvore parou depois de uma pergunta."*
+
+🖥️ **Q3 — Outra pergunta que também separa:** `response_time_ms > 500`?
+
+| resposta | total | criticos | pct_criticos | gini | tempo_min_ms | tempo_max_ms |
+|---|---|---|---|---|---|---|
+| nao (<= 500 ms) | 608 | 0 | 0.0 | 0.0 | 15.3 | 250.0 |
+| sim (> 500 ms) | 117 | 117 | 100.0 | 0.0 | 831.8 | 5925.6 |
+
+🎤 **Fala:** *"Aqui está a razão de tirar só o `response_time_ms` não ter
+derrubado a acurácia: o tempo de resposta separa os críticos tão bem quanto
+o nível. Os erros ficam entre 800 e 6000 ms, e todo o resto fica abaixo de
+250. Não existe ninguém no meio. Duas features contando a mesma história: é
+o que chamamos de features redundantes."*
+
+🖥️ **Q4 — Experimento B:** só sobrou `service`.
+
+| service | total | criticos | pct_criticos | gini | previsao_da_folha |
+|---|---|---|---|---|---|
+| checkout-api | 88 | 21 | 23.9 | 0.363 | nao_critico |
+| search-api | 104 | 22 | 21.2 | 0.334 | nao_critico |
+| auth-service | 121 | 21 | 17.4 | 0.287 | nao_critico |
+| payment-gateway | 88 | 14 | 15.9 | 0.268 | nao_critico |
+| notification-worker | 102 | 14 | 13.7 | 0.237 | nao_critico |
+| inventory-api | 97 | 11 | 11.3 | 0.201 | nao_critico |
+| recommendation-engine | 125 | 14 | 11.2 | 0.199 | nao_critico |
+
+🎤 **Fala:** *"Sem nível e sem tempo de resposta, olhem o que sobra. Nenhum
+serviço passa de 24% de críticos, e todos os grupos continuam misturados (o
+Gini fica entre 0,2 e 0,36). Como a folha responde a classe da maioria, a
+previsão de todos os serviços é 'não crítico'. O modelo não tem como
+encontrar um evento crítico olhando só o nome do serviço."*
+
+🖥️ **Q5 — O coração do algoritmo: qual pergunta a árvore escolhe?** Esta é
+a query mais importante. Ela calcula o **Gini ponderado** depois de cada
+pergunta candidata (a média do Gini dos dois grupos, pesada pelo tamanho de
+cada um). Quanto menor, melhor a pergunta. O **ganho** é o quanto ela
+reduziu a mistura em relação à raiz.
+
+| pergunta | gini_ponderado | ganho |
+|---|---|---|
+| level = ERROR | 0.000 | 0.271 |
+| response_time_ms > 500 | 0.000 | 0.271 |
+| level = WARN | 0.259 | 0.011 |
+| service = checkout-api | 0.269 | 0.002 |
+| service = search-api | 0.270 | 0.001 |
+
+🎤 **Fala:** *"É isso que o `fit()` faz: testa perguntas e escolhe a que mais
+reduz o Gini. Duas perguntas empatam em zero (`level = ERROR` e
+`response_time_ms > 500`) e eliminam toda a mistura. As de serviço mal mexem
+no número. No notebook, a árvore escolheu `level_ERROR` e, no empate, o
+scikit-learn pega uma das duas. Não tem nada além disso: contagem, divisão e
+comparação."*
+
+🖥️ **Q6 — A matriz de confusão em SQL (Experimento A):**
+
+| previsao_da_arvore_A | valor_real | total |
+|---|---|---|
+| critico | critico | 117 |
+| nao_critico | nao_critico | 608 |
+
+🎤 **Fala:** *"A regra aprendida ('se é ERROR, é crítico') contra o valor
+real: só aparecem linhas em que previsão e realidade são iguais. Zero erros.
+É o 100% do Experimento A, só que agora vocês viram de onde ele vem."*
+
+🖥️ **Q7 — A mesma conta para o Experimento B:**
+
+| previsao_da_arvore_B | valor_real | total |
+|---|---|---|
+| nao_critico | critico | 117 |
+| nao_critico | nao_critico | 608 |
+
+🎤 **Fala:** *"O modelo B responde 'não crítico' para tudo. Os 608 normais ele
+acerta, mas os 117 críticos viram falsos negativos: eram críticos e o modelo
+disse que não. É exatamente o `recall` zero que apareceu no notebook. Em
+AIOps, esse é o erro caro: o incidente que ninguém viu."*
+
+> Termos como Gini, recall e falso negativo estão explicados no **Glossário**,
+> mais abaixo neste guia.
+
+---
 
 ## 💬 Discussão final do notebook (2-3 min) — sem comando
 
@@ -763,6 +928,65 @@ aws iam delete-role --role-name aiops-lab-remediation-role
 Se for reaproveitar para outra turma na mesma semana, não precisa desmontar
 nada — só rode o Glue Job e os testes das Lambdas de novo (tudo sobrescreve
 sem criar duplicidade).
+
+---
+
+# 📖 Glossário — termos do notebook e da árvore de decisão
+
+Consulta rápida para você. Cada termo tem a definição e o exemplo no lab.
+
+### Conceitos gerais
+
+| Termo | O que significa | No nosso lab |
+|---|---|---|
+| **Aprendizado supervisionado** | O modelo aprende a partir de exemplos que já trazem a resposta certa (o "gabarito"). | Os eventos já vêm com `severity_score`, de onde tiramos a resposta certa. |
+| **Classificação** | Tipo de problema em que a resposta é uma **categoria** (crítico ou não). Se a resposta fosse um número (ex: prever o score de 0 a 100), seria **regressão**. | Prever `is_critical` (0 ou 1). |
+| **Feature** (variável/atributo) | Cada coluna que entregamos ao modelo como entrada. | `service`, `level`, `response_time_ms`. |
+| **Label / rótulo** (alvo, `y`) | A coluna que o modelo tenta prever, o gabarito. | `is_critical = severity_score >= 80`. |
+| **One-hot encoding** (`get_dummies`) | Transforma uma coluna de texto em várias colunas 0/1, porque a árvore só entende número. | `level` vira `level_ERROR`, `level_WARN`, `level_INFO`, `level_DEBUG`. |
+| **Treino e teste** (`train_test_split`) | Separamos parte dos dados para o modelo aprender (treino) e parte que ele nunca viu para medir o resultado (teste). | 75% treino (543 eventos), 25% teste (182). |
+| **`stratify` / `random_state`** | `stratify` mantém a mesma proporção de críticos no treino e no teste. `random_state` fixa o sorteio, para o resultado ser o mesmo a cada execução. | `stratify=y`, `random_state=42`. |
+
+### Árvore de decisão
+
+| Termo | O que significa | No nosso lab |
+|---|---|---|
+| **Árvore de decisão** | Modelo formado por uma sequência de perguntas de sim/não. | `DecisionTreeClassifier`. |
+| **Nó / raiz / folha** | **Nó** é cada caixa. **Raiz** é a primeira, com todos os eventos. **Folha** é a caixa final, que não pergunta mais nada e só dá a previsão. | A árvore do Experimento A tem 3 caixas: a raiz e duas folhas. |
+| **Divisão (split) e limiar (threshold)** | A pergunta de cada nó. O limiar é o valor de corte. | `level_ERROR <= 0.5` (como vale 0 ou 1, significa "não é ERROR"). |
+| **Gini** (impureza de Gini) | Mede o quanto um grupo está **misturado**. Fórmula: `1 - (p² + (1-p)²)`, onde `p` é a proporção de críticos. **0** = grupo puro (só uma classe). **0,5** = metade a metade (máxima mistura com 2 classes). | Raiz: p = 0,161, então Gini = 1 - (0,839² + 0,161²) ≈ **0,27**. Grupo só de ERROR: p = 1, Gini = **0**. |
+| **Gini ponderado** | Gini dos dois grupos depois de uma pergunta, ponderado pelo tamanho de cada grupo. Serve para comparar perguntas. | Q5 do Athena: `level = ERROR` dá 0,000; `service = checkout-api` dá 0,269. |
+| **Ganho** (redução de impureza) | Gini da raiz menos o Gini ponderado após a pergunta. Quanto maior, melhor a pergunta. A árvore escolhe a pergunta de maior ganho. | `level = ERROR` ganha 0,271 (zera a mistura). |
+| **Profundidade** (`max_depth`) | Quantos níveis de perguntas a árvore pode ter. Limita o tamanho e evita que ela decore os dados. | `max_depth=4`. A árvore A usou só 1; a B usou 4. |
+| **`samples`** | Quantos eventos de treino chegaram até aquela caixa. | Raiz: `samples = 543`. |
+| **`value`** | Quantos eventos de cada classe há na caixa: `[não críticos, críticos]`. | Raiz: `value = [455, 88]`. |
+| **`class`** | A previsão da caixa: a classe da maioria dos eventos que caíram ali. | `class = not_critical` ou `critical`. |
+| **Interpretabilidade** | Capacidade de entender e questionar **por que** o modelo decidiu. Árvores têm; redes neurais, em geral, não. | Dá para ler a regra "se é ERROR, é crítico" e discutir com o time de operações. |
+
+### Métricas de avaliação
+
+| Termo | O que significa | No nosso lab |
+|---|---|---|
+| **Acurácia** | % de previsões corretas, entre todas. Engana quando uma classe é muito maior que a outra. | A: 100%. B: 84,1%, mas sem achar nenhum crítico. |
+| **Baseline** | Resultado de um "modelo" bobo, usado como régua mínima. Se o seu modelo não supera o baseline, ele não aprendeu nada útil. | Sempre responder "não crítico" já dá 84,1%. |
+| **Matriz de confusão** | Tabela que cruza o que o modelo previu com o valor real. | Q6 e Q7 do Athena. |
+| **Verdadeiro positivo (VP) / verdadeiro negativo (VN)** | Acertos: previu crítico e era crítico (VP); previu normal e era normal (VN). | A: 29 VP e 153 VN no teste. |
+| **Falso positivo (FP)** | Alarme falso: previu crítico, mas era normal. Gera ruído e cansaço do time. | Zero nos dois experimentos. |
+| **Falso negativo (FN)** | Incidente não detectado: previu normal, mas era crítico. Em AIOps é o erro mais caro. | B: todos os 29 críticos do teste viram FN. |
+| **Precision** (precisão) | Dos eventos que o modelo disse que eram críticos, quantos realmente eram. `VP / (VP + FP)`. | B: 0,00 (não previu nenhum crítico). |
+| **Recall** (sensibilidade) | Dos eventos que realmente eram críticos, quantos o modelo encontrou. `VP / (VP + FN)`. | A: 1,00. B: **0,00**. |
+| **F1-score** | Média harmônica entre precision e recall. Resume as duas num número só. | A: 1,00. B: 0,00 na classe crítica. |
+| **`support`** | Quantos eventos reais de cada classe existem no teste. | 153 não críticos e 29 críticos. |
+| **`macro avg` / `weighted avg`** | Médias das métricas entre as classes. `macro` trata as classes por igual; `weighted` pesa pelo tamanho. | No B, a `weighted avg` (0,77) esconde o problema da classe crítica. |
+
+### Problemas clássicos (os que apareceram no lab)
+
+| Termo | O que significa | No nosso lab |
+|---|---|---|
+| **Desbalanceamento de classes** | Uma classe é muito mais frequente que a outra, e a acurácia deixa de ser confiável. | Só 16% dos eventos são críticos. |
+| **Features redundantes** | Duas variáveis carregam o mesmo sinal. Tirar uma só não muda o resultado. | `level` e `response_time_ms` separam os críticos igualmente bem. |
+| **Vazamento de dados** (*data leakage*) | O modelo recebe, direta ou indiretamente, a própria resposta. O resultado fica bom demais e não vale na vida real. | Se `severity_score` entrasse nas features, seria entregar o gabarito. No A, o rótulo é derivado de `level` e `response_time_ms`, então 100% é sinal de alerta. |
+| **Overfitting** (sobreajuste) | O modelo decora os dados de treino e vai mal em dados novos. Árvores muito profundas são propensas a isso. | Por isso limitamos com `max_depth` e avaliamos no conjunto de teste. |
 
 ---
 
